@@ -1,13 +1,13 @@
 use std::net::TcpListener;
 
+use super::routes::{health_check, subscribe};
 use actix_web::dev::Server;
+use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
 use sqlx::PgPool;
 
-use super::routes::{health_check, subscribe};
-
 pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
-    let db_pool = web::Data::new(db_pool);
+    let db_pool = Data::new(db_pool);
 
     let server = HttpServer::new(move || {
         App::new()
