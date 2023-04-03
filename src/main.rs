@@ -1,18 +1,19 @@
-use std::net::TcpListener;
-
-use env_logger::Builder;
-use env_logger::Env;
-use sqlx::PgPool;
-
 use zero2prod::config::get_config;
 use zero2prod::startup::run;
+use zero2prod::telemetry::{get_subscriber, init_subscriber};
+
+use std::net::TcpListener;
+
+use secrecy::ExposeSecret;
+use sqlx::PgPool;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    Builder::from_env(Env::default().default_filter_or("info")).init();
+    let subscriber = get_subscriber("zero2prod", "info", std::io::stdout);
+    init_subscriber(subscriber);
 
     let config = get_config().expect("Failed to read configuration.");
-    let connection_pool = PgPool::connect(&config.database.connection_string())
+    let connection_pool = PgPool::connect(&config.database.connection_string().expose_secret())
         .await
         .expect("Failed to connection to Postgres.");
     let socket = format!("localhost:{}", config.application_port);
