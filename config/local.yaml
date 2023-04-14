@@ -1,2 +1,2 @@
 application:
-  host: localhost
+  host: "localhost"
