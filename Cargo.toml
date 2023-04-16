@@ -30,6 +30,9 @@ unicode-segmentation = "1"
 claim = "0.5"
 validator = "0.16"
 fake = "2.5.0"
+quickcheck = "1.0.3"
+quickcheck_macros = "1.0.0"
+rand = "0.8.5"
 
 [dependencies.sqlx]
 version = "0.6.3"
