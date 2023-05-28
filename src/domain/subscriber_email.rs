@@ -2,7 +2,7 @@ use super::Parser;
 
 use validator::validate_email;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct SubscriberEmail(String);
 
 impl Parser for SubscriberEmail {
@@ -63,6 +63,15 @@ mod tests {
     fn email_missing_subject_rejected() {
         let email = "@esi.dz".to_string();
         assert_err!(SubscriberEmail::parse(email));
+    }
+
+    #[test]
+    fn nassim_esi_email_success() {
+        let email = "jr_zorgani@esi.dz".to_string();
+        assert_eq!(
+            Ok(SubscriberEmail("jr_zorgani@esi.dz".to_string())),
+            SubscriberEmail::parse(email)
+        );
     }
 
     #[quickcheck_macros::quickcheck]

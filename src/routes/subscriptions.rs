@@ -4,7 +4,7 @@ use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-#[derive(serde::Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 pub struct FormData {
     email: String,
     name: String,
@@ -13,7 +13,7 @@ impl TryFrom<FormData> for NewSubscriber {
     type Error = String;
 
     fn try_from(value: FormData) -> Result<Self, Self::Error> {
-        Ok(NewSubscriber::new(value.name, value.email)?)
+        Ok(NewSubscriber::new(value.email, value.name)?)
     }
 }
 
@@ -25,12 +25,12 @@ impl TryFrom<FormData> for NewSubscriber {
         subscriber_name = %form.name
     )
 )]
-
 pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> HttpResponse {
     let new_subscriber = match form.0.try_into() {
-        Ok(name) => name,
+        Ok(ns) => ns,
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
+
     match insert_subscriber(&new_subscriber, &pool).await {
         Ok(_) => HttpResponse::Ok().finish(),
         Err(e) => {

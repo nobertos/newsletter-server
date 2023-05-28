@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn valid_name_parsed_successfully() {
-        let name = "Yacine Dada".into();
+        let name = "rayene nassim".into();
         assert_ok!(SubscriberName::parse(name));
     }
 }

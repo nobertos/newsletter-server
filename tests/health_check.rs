@@ -101,7 +101,6 @@ async fn subscribe_returns_200_for_valid_form() {
         .fetch_one(&test_app.db_pool)
         .await
         .expect("Failed to fetch saved subscriptions.");
-
     assert_eq!(saved.email, "jr_zorgani@esi.dz");
     assert_eq!(saved.name, "rayene nassim");
 }
