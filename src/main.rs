@@ -20,10 +20,19 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to connection to Postgres.");
     let socket = format!("{}:{}", config.application.host, config.application.port);
     let listener = TcpListener::bind(socket)?;
+
     let sender = config
         .email_client
         .sender()
         .expect("Invalid send email address");
-    let email_client = EmailClient::new(config.email_client.base_url, sender);
-    run(listener, connection_pool, email_client)?.await
+    let timeout = config.email_client.timeout();
+    let email_client = EmailClient::new(
+        &config.email_client.base_url,
+        sender,
+        config.email_client.authorization_token,
+        timeout,
+    );
+
+    run(listener, connection_pool, email_client)?.await?;
+    Ok(())
 }

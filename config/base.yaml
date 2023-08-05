@@ -7,5 +7,7 @@ database:
   password: "password"
   database_name: "newsletter"
 email_client:
-  base_url: "localhost"
+  base_url: "http://127.0.0.1:8000"
   sender_email: "jr_zorgani@esi.dz"
+  authorization_token: "a6b37f0c-b388-4f5b-b22d-3f5127196be0"
+  timeout_milliseconds: 10000
