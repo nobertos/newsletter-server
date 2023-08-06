@@ -1,13 +1,9 @@
 use once_cell::sync::Lazy;
-use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 
-use std::net::TcpListener;
-
 use zero2prod::config::{get_config, DatabaseSettings};
-use zero2prod::email_client::EmailClient;
-use zero2prod::startup::run;
+use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
@@ -27,17 +23,28 @@ pub struct TestApp {
     pub db_pool: PgPool,
 }
 
-async fn configure_db(config_db: &DatabaseSettings) -> PgPool {
-    let mut connection =
-        PgConnection::connect(&config_db.connection_string_without_db().expose_secret())
+impl TestApp {
+    pub async fn post_subscriptions(&self, body: &str) -> reqwest::Response {
+        reqwest::Client::new()
+            .post(&format!("{}/subscriptions", &self.url))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body.to_string())
+            .send()
             .await
-            .expect("Failed to connect to Postgres.");
+            .expect("Failed to execute request.")
+    }
+}
+
+async fn configure_db(config_db: &DatabaseSettings) -> PgPool {
+    let mut connection = PgConnection::connect_with(&config_db.without_db())
+        .await
+        .expect("Failed to connect to Postgres.");
     connection
         .execute(format!(r#"CREATE DATABASE "{}";"#, config_db.database_name).as_str())
         .await
         .expect("Failed to create database");
 
-    let connection_pool = PgPool::connect(&config_db.connection_string().expose_secret())
+    let connection_pool = PgPool::connect_with(config_db.with_db())
         .await
         .expect("Failed to connect to Postgres.");
 
@@ -51,31 +58,24 @@ async fn configure_db(config_db: &DatabaseSettings) -> PgPool {
 
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
-    let listener = TcpListener::bind("localhost:0").expect("Failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
-    let url = format!("http://localhost:{}", port);
 
-    let mut config = get_config().expect("Failed to read configuration");
-    config.database.database_name = Uuid::new_v4().to_string();
-    let connection_pool = configure_db(&config.database).await;
+    let config = {
+        let mut c = get_config().expect("Failed to read configuration");
+        c.database.database_name = Uuid::new_v4().to_string();
+        c.application.port = 0;
+        c
+    };
 
-    let sender_email = config
-        .email_client
-        .sender()
-        .expect("Invalid sender email address.");
-    let timeout = config.email_client.timeout();
-    let email_client = EmailClient::new(
-        &url,
-        sender_email,
-        config.email_client.authorization_token,
-        timeout,
-    );
+    configure_db(&config.database).await;
 
-    let server =
-        run(listener, connection_pool.clone(), email_client).expect("Failed to bind address");
-    let _ = tokio::spawn(server);
+    let application = Application::build(config.clone())
+        .await
+        .expect("Failed to build application.");
+    let url = format!("http://localhost:{}", application.port());
+    let _ = tokio::spawn(application.run_until_stopped());
+
     TestApp {
         url,
-        db_pool: connection_pool,
+        db_pool: get_connection_pool(&config.database),
     }
 }

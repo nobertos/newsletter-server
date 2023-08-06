@@ -66,7 +66,6 @@ struct SendEmailRequest<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Sub;
 
     use crate::domain::{subscriber_email::SubscriberEmail, Parser};
     use crate::email_client::EmailClient;
