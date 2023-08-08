@@ -34,24 +34,40 @@ pub async fn subscribe(
         Ok(ns) => ns,
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
+
     if insert_subscriber(&new_subscriber, &pool).await.is_err() {
         tracing::error!("Failed to execute query while adding new subscriber.");
         return HttpResponse::InternalServerError().finish();
     }
 
-    if email_client
-        .send_email(
-            new_subscriber.email,
-            "Welcome!",
-            "Welcome to our newsletter!",
-            "Welcome to our newsletter!",
-        )
+    if send_confirmation_email(&email_client, new_subscriber)
         .await
         .is_err()
     {
         return HttpResponse::InternalServerError().finish();
     }
+
     HttpResponse::Ok().finish()
+}
+
+async fn send_confirmation_email(
+    email_client: &EmailClient,
+    new_subscriber: NewSubscriber,
+) -> Result<(), reqwest::Error> {
+    let confirmation_link = "https://example.com/subscriptions/confirm";
+    let plain_body = format!(
+        "Welcome to our newsletter!\nVisit {} to confirm your subscription.",
+        confirmation_link
+    );
+    let html_body = format!(
+        "Welcome to our newsletter! <br />\
+            Click <a href=\"{}\">here</a> to confirm your subscription.",
+        confirmation_link
+    );
+
+    email_client
+        .send_email(new_subscriber.email, "Welcome!", &html_body, &plain_body)
+        .await
 }
 
 #[tracing::instrument(
@@ -66,7 +82,7 @@ pub async fn insert_subscriber(
     sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at, status)
-        VALUES ($1, $2, $3, $4, 'confirmed')
+        VALUES ($1, $2, $3, $4, 'pending_confirmation')
         "#,
         subscriber_id,
         new_subscriber.email.as_ref(),
