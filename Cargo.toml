@@ -33,7 +33,7 @@ rand = { version = "0.8.5", features = ["std_rng"] }
 thiserror = "1.0.44"
 anyhow = "1.0.72"
 base64 = "0.21.2"
-sha3 = "0.10.8"
+argon2 = { version = "0.5.1", features = ["std"] }
 
 [dependencies.sqlx]
 version = "0.6.3"
