@@ -11,6 +11,7 @@ use sqlx::PgPool;
 use crate::domain::subscriber_email::SubscriberEmail;
 use crate::domain::Parser;
 use crate::email_client::EmailClient;
+use crate::telemetry::spawn_blocking_with_tracing;
 
 use super::error_chain_fmt;
 
@@ -115,7 +116,7 @@ async fn validate_credentials(
         .map_err(PublishError::UnexpectedError)?
         .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username")))?;
 
-    tokio::task::spawn_blocking(move || {
+    spawn_blocking_with_tracing(|| {
         verify_password_hash(expected_password_hash, credentials.password)
     })
     .await
