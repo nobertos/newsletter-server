@@ -2,17 +2,14 @@ use actix_web::http::header::{self, HeaderMap, HeaderValue};
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
 use anyhow::Context;
-use argon2::Argon2;
-use argon2::{PasswordHash, PasswordVerifier};
 use base64::Engine;
-use secrecy::{ExposeSecret, Secret};
+use secrecy::Secret;
 use sqlx::PgPool;
 
 use crate::authentication::{validate_credentials, AuthError, Credentials};
 use crate::domain::subscriber_email::SubscriberEmail;
 use crate::domain::Parser;
 use crate::email_client::EmailClient;
-use crate::telemetry::spawn_blocking_with_tracing;
 
 use super::error_chain_fmt;
 
