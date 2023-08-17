@@ -12,3 +12,4 @@ email_client:
   sender_email: "jr_zorgani@esi.dz"
   authorization_token: "a6b37f0c-b388-4f5b-b22d-3f5127196be0"
   timeout_milliseconds: 10000
+redis_uri: "redis://localhost:6379"
