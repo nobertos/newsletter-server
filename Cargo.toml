@@ -14,7 +14,6 @@ name = "zero2prod"
 [dependencies]
 actix-web = "4"
 native-tls = { version = "0.2", default-features = false }
-reqwest = {version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 serde = {version = "1", features=["derive"]}
 tokio ={version = "1", features= ["macros", "rt-multi-thread"]}
 config = "0.13"
@@ -36,14 +35,17 @@ base64 = "0.21.2"
 argon2 = { version = "0.5.1", features = ["std"] }
 urlencoding = "2.1.3"
 htmlescape = "0.3.1"
-hmac = { version = "0.12.1", features = ["std"] }
-sha2 = "0.10.7"
-hex = "0.4.3"
+actix-web-flash-messages = { version = "0.4.2", features = ["cookies"] }
 
 [dependencies.sqlx]
 version = "0.6.3"
 default-features = false
 features = ["runtime-actix-rustls", "macros", "postgres", "uuid", "chrono", "migrate", "offline"]
+
+[dependencies.reqwest]
+version = "0.11"
+default-features = false
+features = ["json", "rustls-tls", "cookies"]
 
 [dev-dependencies]
 tokio = {version= "1", features = ["rt", "macros"]}
