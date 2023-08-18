@@ -43,7 +43,7 @@ pub struct TestUser {
 impl TestApp {
     pub async fn post_subscriptions(&self, body: &str) -> reqwest::Response {
         self.api_client
-            .post(&format!("{}/subscriptions", &self.url))
+            .post(&format!("{}/subscriptions", self.url))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .body(body.to_string())
             .send()
@@ -66,7 +66,27 @@ impl TestApp {
         Body: serde::Serialize,
     {
         self.api_client
-            .post(&format!("{}/login", &self.url))
+            .post(&format!("{}/login", self.url))
+            .form(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
+    pub async fn post_login_test_user(&self) -> reqwest::Response {
+        let body = serde_json::json!({
+            "username": self.test_user.username,
+            "password": self.test_user.password,
+        });
+        self.post_login(&body).await
+    }
+
+    pub async fn post_change_password<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.api_client
+            .post(&format!("{}/admin/password", self.url))
             .form(body)
             .send()
             .await
@@ -75,19 +95,30 @@ impl TestApp {
 
     pub async fn get_admin_dashboard(&self) -> reqwest::Response {
         self.api_client
-            .get(&format!("{}/admin/dashboard", &self.url))
+            .get(&format!("{}/admin/dashboard", self.url))
             .send()
             .await
             .expect("Failed to execute request.")
     }
 
+    pub async fn get_change_password(&self) -> reqwest::Response {
+        self.api_client
+            .get(&format!("{}/admin/password", self.url))
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
+    pub async fn get_change_password_html(&self) -> String {
+        self.get_change_password().await.text().await.unwrap()
+    }
     pub async fn get_admin_dashboard_html(&self) -> String {
         self.get_admin_dashboard().await.text().await.unwrap()
     }
 
     pub async fn get_login_html(&self) -> String {
         self.api_client
-            .get(&format!("{}/login", &self.url))
+            .get(&format!("{}/login", self.url))
             .send()
             .await
             .expect("Failed to execute request.")
@@ -95,6 +126,7 @@ impl TestApp {
             .await
             .unwrap()
     }
+
     pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
         let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
         let get_link = |s: &str| {
