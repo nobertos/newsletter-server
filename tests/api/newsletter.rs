@@ -15,6 +15,7 @@ async fn newsletters_not_delivered_to_unconfirmed_subscribers() {
         .mount(&test_app.email_server)
         .await;
 
+    let response = test_app.post_login_test_user().await;
     let newsletter_request_body = serde_json::json!({
         "title": "Newsletter title",
         "content": {
@@ -164,7 +165,7 @@ async fn non_existing_user_rejected() {
     );
 
     let response = reqwest::Client::new()
-        .post(&format!("{}/newsletters", test_app.url))
+        .post(&format!("{}/admin/newsletters", test_app.url))
         .basic_auth(username, Some(password))
         .json(&body)
         .send()
@@ -172,10 +173,6 @@ async fn non_existing_user_rejected() {
         .expect("Failed to execute request");
 
     assert_eq!(401, response.status().as_u16());
-    assert_eq!(
-        r#"Basic realm="publish""#,
-        response.headers()["WWW-Authenticate"]
-    )
 }
 
 #[tokio::test]
@@ -194,7 +191,7 @@ async fn invalid_password_rejected() {
     }
     );
     let response = reqwest::Client::new()
-        .post(&format!("{}/newsletters", test_app.url))
+        .post(&format!("{}/admin/newsletters", test_app.url))
         .basic_auth(username, Some(password))
         .json(&body)
         .send()
@@ -202,8 +199,4 @@ async fn invalid_password_rejected() {
         .expect("Failed to execute request");
 
     assert_eq!(401, response.status().as_u16());
-    assert_eq!(
-        r#"Basic realm="publish""#,
-        response.headers()["WWW-Authenticate"]
-    )
 }

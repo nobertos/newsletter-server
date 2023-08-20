@@ -7,8 +7,14 @@ use sqlx::PgPool;
 use crate::domain::subscriber_email::SubscriberEmail;
 use crate::domain::Parser;
 use crate::email_client::EmailClient;
+use crate::routes::error_chain_fmt;
 
-use super::error_chain_fmt;
+#[derive(serde::Deserialize)]
+pub struct FormData {
+    title: String,
+    text_content: String,
+    html_content: String,
+}
 
 #[derive(thiserror::Error)]
 pub enum PublishError {
@@ -42,29 +48,12 @@ impl ResponseError for PublishError {
     }
 }
 
-#[derive(serde::Deserialize)]
-pub struct BodyData {
-    title: String,
-    content: Content,
-}
-
-#[derive(serde::Deserialize)]
-pub struct Content {
-    html: String,
-    text: String,
-}
-
 struct ConfirmedSubscriber {
     email: SubscriberEmail,
 }
 
-#[tracing::instrument(
-    name = "Publish a newsletter issue",
-    skip(body, pool, email_client),
-    fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
-)]
-pub async fn publish_newsletter(
-    body: web::Json<BodyData>,
+pub async fn send_newsletter(
+    form: web::Form<FormData>,
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
 ) -> Result<HttpResponse, PublishError> {
@@ -75,9 +64,9 @@ pub async fn publish_newsletter(
                 email_client
                     .send_email(
                         &subscriber.email,
-                        &body.title,
-                        &body.content.html,
-                        &body.content.text,
+                        &form.title,
+                        &form.html_content,
+                        &form.text_content,
                     )
                     .await
                     .with_context(|| {

@@ -3,7 +3,7 @@ use crate::config::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
 use crate::routes::{
     admin_dashboard, change_password, change_password_form, confirm, health_check, home, login,
-    login_form, logout, publish_newsletter, subscribe,
+    login_form, logout, send_newsletter, send_newsletter_form, subscribe,
 };
 
 use std::net::TcpListener;
@@ -22,7 +22,6 @@ use secrecy::Secret;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
-
 pub struct Application {
     port: u16,
     server: Server,
@@ -113,12 +112,13 @@ pub async fn run(
                     .route("/dashboard", web::get().to(admin_dashboard))
                     .route("/password", web::get().to(change_password_form))
                     .route("/password", web::post().to(change_password))
+                    .route("/newsletters", web::get().to(send_newsletter_form))
+                    .route("/newsletters", web::post().to(send_newsletter))
                     .route("/logout", web::post().to(logout)),
             )
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))
-            .route("/newsletters", web::post().to(publish_newsletter))
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
