@@ -51,10 +51,13 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+    pub async fn post_newsletters<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
         self.api_client
             .post(&format!("{}/admin/newsletters", self.url))
-            .json(&body)
+            .form(body)
             .send()
             .await
             .expect("Failed to execute request")

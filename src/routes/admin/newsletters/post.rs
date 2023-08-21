@@ -1,6 +1,7 @@
 use actix_web::http::header::{self, HeaderValue};
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
+use actix_web_flash_messages::FlashMessage;
 use anyhow::Context;
 use sqlx::PgPool;
 
@@ -8,6 +9,7 @@ use crate::domain::subscriber_email::SubscriberEmail;
 use crate::domain::Parser;
 use crate::email_client::EmailClient;
 use crate::routes::error_chain_fmt;
+use crate::utils::see_other;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -79,7 +81,8 @@ pub async fn send_newsletter(
             }
         }
     }
-    Ok(HttpResponse::Ok().finish())
+    FlashMessage::info("The newsletter issue has been published!").send();
+    Ok(see_other("/admin/newsletters"))
 }
 
 #[tracing::instrument(name = "Get confirmed subscribers", skip(pool))]
