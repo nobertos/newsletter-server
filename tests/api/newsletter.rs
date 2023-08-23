@@ -20,6 +20,7 @@ async fn newsletters_not_delivered_to_unconfirmed_subscribers() {
         "title": "Newsletter title",
         "text_content": "Newsletter body as plain text",
         "html_content": "<p>Newsletter body as HTML</p>",
+       "idempotency_key": Uuid::new_v4().to_string(),
     });
 
     let response = test_app
@@ -46,6 +47,7 @@ async fn newsletters_delivered_to_confirmed_subscribers() {
         "title": "Newsletter title",
         "text_content": "Newsletter body as plain text",
         "html_content": "<p>Newsletter body as HTML</p>",
+       "idempotency_key": Uuid::new_v4().to_string(),
     });
     let response = test_app
         .post_publish_newsletters(&newsletter_request_body)
