@@ -54,7 +54,7 @@ struct ConfirmedSubscriber {
     email: SubscriberEmail,
 }
 
-pub async fn send_newsletter(
+pub async fn publish_newsletter(
     form: web::Form<FormData>,
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,

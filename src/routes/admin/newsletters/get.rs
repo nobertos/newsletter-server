@@ -3,7 +3,7 @@ use actix_web_flash_messages::IncomingFlashMessages;
 
 use std::fmt::Write;
 
-pub async fn send_newsletter_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
+pub async fn publish_newsletter_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
     let mut error_html = String::new();
     for m in flash_messages.iter() {
         writeln!(error_html, "<p><i>{}</i></p>", m.content()).unwrap()
