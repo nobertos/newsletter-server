@@ -7,7 +7,7 @@ use crate::authentication::UserId;
 use crate::domain::subscriber_email::SubscriberEmail;
 use crate::domain::Parser;
 use crate::email_client::EmailClient;
-use crate::idempotency::{get_saved_response, IdempotencyKey};
+use crate::idempotency::{get_saved_response, save_response, IdempotencyKey};
 use crate::utils::{e400, e500, see_other};
 
 #[derive(serde::Deserialize)]
@@ -20,6 +20,10 @@ pub struct FormData {
 
 struct ConfirmedSubscriber {
     email: SubscriberEmail,
+}
+
+fn success_message() -> FlashMessage {
+    FlashMessage::info("The newsletter issue has been published!")
 }
 
 pub async fn publish_newsletter(
@@ -40,6 +44,7 @@ pub async fn publish_newsletter(
         .await
         .map_err(e500)?
     {
+        success_message().send();
         return Ok(saved_response);
     }
 
@@ -61,8 +66,12 @@ pub async fn publish_newsletter(
             }
         }
     }
-    FlashMessage::info("The newsletter issue has been published!").send();
-    Ok(see_other("/admin/newsletters"))
+    success_message().send();
+    let response = see_other("/admin/newsletters");
+    let response = save_response(&pool, &idempotency_key, *user_id, response)
+        .await
+        .map_err(e500)?;
+    Ok(response)
 }
 
 #[tracing::instrument(name = "Get confirmed subscribers", skip(pool))]
