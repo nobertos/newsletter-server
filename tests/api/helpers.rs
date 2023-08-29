@@ -6,6 +6,8 @@ use uuid::Uuid;
 use wiremock::MockServer;
 
 use zero2prod::config::{get_config, DatabaseSettings};
+use zero2prod::email_client::EmailClient;
+use zero2prod::issue_delivery_worker::{try_execute_task, ExecutionOutcome};
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
@@ -33,6 +35,7 @@ pub struct TestApp {
     pub email_server: MockServer,
     pub test_user: TestUser,
     pub api_client: reqwest::Client,
+    pub email_client: EmailClient,
 }
 pub struct TestUser {
     pub user_id: Uuid,
@@ -41,6 +44,18 @@ pub struct TestUser {
 }
 
 impl TestApp {
+    pub async fn dispatch_all_pending_emails(&self) {
+        loop {
+            if let ExecutionOutcome::EmptyQueue =
+                try_execute_task(&self.db_pool, &self.email_client)
+                    .await
+                    .unwrap()
+            {
+                break;
+            }
+        }
+    }
+
     pub async fn post_subscriptions(&self, body: &str) -> reqwest::Response {
         self.api_client
             .post(&format!("{}/subscriptions", self.url))
@@ -257,6 +272,7 @@ pub async fn spawn_app() -> TestApp {
         email_server,
         test_user: TestUser::generate(),
         api_client,
+        email_client: config.email_client.client(),
     };
     test_app.test_user.store(&test_app.db_pool).await;
 

@@ -5,13 +5,9 @@ use fake::faker::name::en::Name;
 use fake::Fake;
 use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
-use wiremock::{Mock, MockBuilder, ResponseTemplate};
+use wiremock::{Mock, ResponseTemplate};
 
 use crate::helpers::{assert_is_redirect_to, spawn_app, ConfirmationLinks, TestApp};
-
-fn email_mock_builder() -> MockBuilder {
-    Mock::given(path("/email")).and(method("POST"))
-}
 
 #[tokio::test]
 async fn newsletters_not_delivered_to_unconfirmed_subscribers() {
@@ -37,6 +33,7 @@ async fn newsletters_not_delivered_to_unconfirmed_subscribers() {
         .await;
 
     assert_eq!(response.status().as_u16(), 303);
+    test_app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -63,6 +60,7 @@ async fn newsletters_delivered_to_confirmed_subscribers() {
         .await;
 
     assert_eq!(response.status().as_u16(), 303);
+    test_app.dispatch_all_pending_emails().await;
 }
 
 async fn create_unconfirmed_subscriber(test_app: &TestApp) -> ConfirmationLinks {
@@ -137,6 +135,7 @@ async fn newsletters_returns_400_for_invalid_data() {
             error_message
         );
     }
+    test_app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -153,6 +152,7 @@ async fn requests_missing_authorization_rejected() {
     let response = test_app.post_publish_newsletters(&body).await;
 
     assert_eq!(303, response.status().as_u16());
+    test_app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -190,6 +190,7 @@ async fn newsletter_creation_idempotent() {
 
     let html_page = test_app.get_publish_newsletter_html().await;
     assert!(html_page.contains("The newsletter issue has been published"));
+    test_app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -221,49 +222,5 @@ async fn concurrent_form_submission_handled_gracefully() {
         response1.text().await.unwrap(),
         response2.text().await.unwrap()
     );
-}
-
-#[tokio::test]
-async fn transient_errors_dont_cause_duplicate_deliveries_on_retries() {
-    let test_app = spawn_app().await;
-    let newsletter_request_body = serde_json::json!({
-        "title": "Newsletter title",
-        "text_content": "Newsletter body as plain text",
-        "html_content": "<p>Newsletter body as HTML</p>",
-        "idempotency_key": uuid::Uuid::new_v4().to_string()
-    });
-
-    create_confirmed_subscriber(&test_app).await;
-    create_confirmed_subscriber(&test_app).await;
-    test_app.post_login_test_user().await;
-
-    email_mock_builder()
-        .respond_with(ResponseTemplate::new(200))
-        .up_to_n_times(1)
-        .expect(1)
-        .mount(&test_app.email_server)
-        .await;
-    email_mock_builder()
-        .respond_with(ResponseTemplate::new(500))
-        .up_to_n_times(1)
-        .expect(1)
-        .mount(&test_app.email_server)
-        .await;
-
-    let response = test_app
-        .post_publish_newsletters(&newsletter_request_body)
-        .await;
-    assert_eq!(response.status().as_u16(), 500);
-
-    email_mock_builder()
-        .respond_with(ResponseTemplate::new(200))
-        .expect(1)
-        .named("Delivery retry")
-        .mount(&test_app.email_server)
-        .await;
-
-    let response = test_app
-        .post_publish_newsletters(&newsletter_request_body)
-        .await;
-    assert_eq!(response.status().as_u16(), 303)
+    test_app.dispatch_all_pending_emails().await;
 }

@@ -31,19 +31,7 @@ impl Application {
     pub async fn build(config: Settings) -> Result<Self, anyhow::Error> {
         let connection_pool = get_connection_pool(&config.database);
 
-        let sender_email = config
-            .email_client
-            .sender()
-            .expect("invalid send email address");
-
-        let timeout = config.email_client.timeout();
-        let email_client = EmailClient::new(
-            &config.email_client.base_url,
-            sender_email,
-            config.email_client.authorization_token,
-            timeout,
-        );
-
+        let email_client = config.email_client.client();
         let addr = format!("{}:{}", config.application.host, config.application.port);
         let listener = TcpListener::bind(addr)?;
         let port = listener.local_addr().unwrap().port();

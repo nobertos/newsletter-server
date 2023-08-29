@@ -13,18 +13,7 @@ use crate::startup::get_connection_pool;
 
 pub async fn run_worker_until_stopped(config: Settings) -> Result<(), anyhow::Error> {
     let connection_pool = get_connection_pool(&config.database);
-
-    let sender_email = config
-        .email_client
-        .sender()
-        .expect("Invalid sender email address.");
-    let timeout = config.email_client.timeout();
-    let email_client = EmailClient::new(
-        &config.email_client.base_url,
-        sender_email,
-        config.email_client.authorization_token,
-        timeout,
-    );
+    let email_client = config.email_client.client();
     worker_loop(connection_pool, email_client).await
 }
 
@@ -42,7 +31,7 @@ async fn worker_loop(pool: PgPool, email_client: EmailClient) -> Result<(), anyh
     }
 }
 
-enum ExecutionOutcome {
+pub enum ExecutionOutcome {
     TaskCompleted,
     EmptyQueue,
 }
@@ -55,7 +44,7 @@ enum ExecutionOutcome {
     ),
     err
 )]
-async fn try_execute_task(
+pub async fn try_execute_task(
     pool: &PgPool,
     email_client: &EmailClient,
 ) -> Result<ExecutionOutcome, anyhow::Error> {
