@@ -108,14 +108,14 @@ pub async fn try_processing(
     let mut transaction = pool.begin().await?;
     let n_inserted_rows = sqlx::query!(
         r#"
-        INSERT INTO idempotency (
-            user_id,
-            idempotency_key,
-            created_at
-        )
-        VALUES ($1, $2, now())
-        ON CONFLICT DO NOTHING;
-"#,
+            INSERT INTO idempotency (
+                user_id,
+                idempotency_key,
+                created_at
+            )
+            VALUES ($1, $2, now())
+            ON CONFLICT DO NOTHING;
+        "#,
         user_id,
         idempotency_key.as_ref()
     )
