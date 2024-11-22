@@ -3,7 +3,7 @@ application:
   base_url: "http://localhost"
 
 database:
-  require_ssl: false
+  require_ssl: true
 
 email_client:
   base_url: "https://api.postmarkapp.com"

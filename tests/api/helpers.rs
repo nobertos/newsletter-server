@@ -11,6 +11,48 @@ use zero2prod::issue_delivery_worker::{try_execute_task, ExecutionOutcome};
 use zero2prod::startup::{get_connection_pool, Application};
 use zero2prod::telemetry::{get_subscriber, init_subscriber};
 
+pub async fn spawn_app() -> TestApp {
+    Lazy::force(&TRACING);
+
+    let email_server = MockServer::start().await;
+
+    let config = {
+        let mut c = get_config().expect("Failed to read configuration");
+        c.database.database_name = Uuid::new_v4().to_string();
+        c.application.port = 0;
+        c.email_client.base_url = email_server.uri();
+        c
+    };
+
+    configure_db(&config.database).await;
+
+    let application = Application::build(config.clone())
+        .await
+        .expect("Failed to build application.");
+    let port = application.port();
+    let url = format!("http://localhost:{}", application.port());
+    let _ = tokio::spawn(application.run_until_stopped());
+
+    let api_client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .cookie_store(true)
+        .build()
+        .unwrap();
+
+    let test_app = TestApp {
+        url,
+        port,
+        db_pool: get_connection_pool(&config.database),
+        email_server,
+        test_user: TestUser::generate(),
+        api_client,
+        email_client: config.email_client.client(),
+    };
+    test_app.test_user.store(&test_app.db_pool).await;
+
+    test_app
+}
+
 static TRACING: Lazy<()> = Lazy::new(|| {
     let filter_level = "debug";
     let subscriber_name = "test";
@@ -37,7 +79,7 @@ pub struct TestApp {
     pub api_client: reqwest::Client,
     pub email_client: EmailClient,
 }
-pub struct TestUser {
+struct TestUser {
     pub user_id: Uuid,
     pub username: String,
     pub password: String,
@@ -235,48 +277,6 @@ async fn configure_db(config_db: &DatabaseSettings) -> PgPool {
         .expect("Failed to migrate the database.");
 
     connection_pool
-}
-
-pub async fn spawn_app() -> TestApp {
-    Lazy::force(&TRACING);
-
-    let email_server = MockServer::start().await;
-
-    let config = {
-        let mut c = get_config().expect("Failed to read configuration");
-        c.database.database_name = Uuid::new_v4().to_string();
-        c.application.port = 0;
-        c.email_client.base_url = email_server.uri();
-        c
-    };
-
-    configure_db(&config.database).await;
-
-    let application = Application::build(config.clone())
-        .await
-        .expect("Failed to build application.");
-    let port = application.port();
-    let url = format!("http://localhost:{}", application.port());
-    let _ = tokio::spawn(application.run_until_stopped());
-
-    let api_client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .cookie_store(true)
-        .build()
-        .unwrap();
-
-    let test_app = TestApp {
-        url,
-        port,
-        db_pool: get_connection_pool(&config.database),
-        email_server,
-        test_user: TestUser::generate(),
-        api_client,
-        email_client: config.email_client.client(),
-    };
-    test_app.test_user.store(&test_app.db_pool).await;
-
-    test_app
 }
 
 pub fn assert_is_redirect_to(response: &reqwest::Response, location: &str) {
